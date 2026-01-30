@@ -60,8 +60,9 @@ export class PlaneBoardView extends ItemView {
 		this.render();
 	}
 
-	async onClose(): Promise<void> {
-		await this.plugin.events.off("cache-updated", this.onCache);
+	protected onClose(): Promise<void> {
+		this.plugin.events.off("cache-updated", this.onCache);
+		return Promise.resolve();
 	}
 
 	private render(): void {
