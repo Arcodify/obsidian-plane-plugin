@@ -1,4 +1,9 @@
-import { ItemView, DropdownComponent, ButtonComponent, type ViewStateResult } from "obsidian";
+import {
+	ItemView,
+	DropdownComponent,
+	ButtonComponent,
+	type ViewStateResult,
+} from "obsidian";
 import type { WorkspaceLeaf } from "obsidian";
 import type PlaneProjectPlugin from "../main";
 import type { PlaneState, PlaneWorkItem } from "../types";
@@ -13,9 +18,14 @@ export class PlaneBoardView extends ItemView {
 	private moduleFilter: string | undefined;
 	private readonly onCache = () => this.render();
 
-	constructor(leaf: WorkspaceLeaf, private readonly plugin: PlaneProjectPlugin) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly plugin: PlaneProjectPlugin,
+	) {
 		super(leaf);
-		this.registerEvent(this.plugin.events.on("cache-updated", this.onCache));
+		this.registerEvent(
+			this.plugin.events.on("cache-updated", this.onCache),
+		);
 	}
 
 	getViewType(): string {
@@ -27,11 +37,16 @@ export class PlaneBoardView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		const project = this.plugin.projectLabel(this.plugin.cache.selectedProjectId ?? "");
+		const project = this.plugin.projectLabel(
+			this.plugin.cache.selectedProjectId ?? "",
+		);
 		return project ? `Plane Board: ${project}` : "Plane Board";
 	}
 
-	async setState(state: BoardViewState, result: ViewStateResult): Promise<void> {
+	async setState(
+		state: BoardViewState,
+		result: ViewStateResult,
+	): Promise<void> {
 		if (state.projectId) {
 			this.plugin.cache.selectedProjectId = state.projectId;
 			await this.plugin.savePersisted();
@@ -46,7 +61,7 @@ export class PlaneBoardView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		this.plugin.events.off("cache-updated", this.onCache);
+		await this.plugin.events.off("cache-updated", this.onCache);
 	}
 
 	private render(): void {
@@ -63,7 +78,11 @@ export class PlaneBoardView extends ItemView {
 		for (const proj of this.plugin.availableProjects) {
 			projectSelect.addOption(proj.id, this.plugin.projectLabel(proj.id));
 		}
-		projectSelect.setValue(this.plugin.cache.selectedProjectId ?? this.plugin.settings.defaultProjectId ?? "");
+		projectSelect.setValue(
+			this.plugin.cache.selectedProjectId ??
+				this.plugin.settings.defaultProjectId ??
+				"",
+		);
 		projectSelect.onChange(async (value) => {
 			if (!value) return;
 			this.plugin.cache.selectedProjectId = value;
@@ -83,8 +102,13 @@ export class PlaneBoardView extends ItemView {
 	}
 
 	private renderFilters(container: HTMLElement): void {
-		const row = container.createDiv({ cls: "plane-hub__filters plane-hub__row" });
-		row.createEl("span", { text: "Filter module", cls: "plane-hub__muted" });
+		const row = container.createDiv({
+			cls: "plane-hub__filters plane-hub__row",
+		});
+		row.createEl("span", {
+			text: "Filter module",
+			cls: "plane-hub__muted",
+		});
 		const dropdown = new DropdownComponent(row);
 		dropdown.addOption("", "All modules");
 		for (const mod of this.plugin.getProjectDataOrEmpty().modules) {
@@ -101,7 +125,9 @@ export class PlaneBoardView extends ItemView {
 		const section = container.createDiv({ cls: "plane-hub__section" });
 		const titleRow = section.createDiv({ cls: "plane-hub__row" });
 		titleRow.createEl("h3", { text: "Work items" });
-		new ButtonComponent(titleRow).setButtonText("New").onClick(() => this.plugin.openHub()); // reuse hub form
+		new ButtonComponent(titleRow)
+			.setButtonText("New")
+			.onClick(() => this.plugin.openHub()); // reuse hub form
 
 		const data = this.filteredItems();
 		if (!data.length) {
@@ -109,7 +135,10 @@ export class PlaneBoardView extends ItemView {
 			return;
 		}
 
-		const columns = this.buildColumns(data, this.plugin.getProjectDataOrEmpty().states);
+		const columns = this.buildColumns(
+			data,
+			this.plugin.getProjectDataOrEmpty().states,
+		);
 		const board = section.createDiv({ cls: "plane-board" });
 		for (const column of columns) {
 			const colEl = board.createDiv({ cls: "plane-board__column" });
@@ -119,23 +148,36 @@ export class PlaneBoardView extends ItemView {
 			}
 			const head = colEl.createDiv({ cls: "plane-board__column-head" });
 			head.createEl("span", { text: column.title });
-			head.createEl("span", { text: `${column.items.length}`, cls: "plane-hub__muted" });
+			head.createEl("span", {
+				text: `${column.items.length}`,
+				cls: "plane-hub__muted",
+			});
 
 			for (const item of column.items) {
 				const card = colEl.createDiv({ cls: "plane-board__card" });
-				card.createEl("div", { text: item.name, cls: "plane-hub__card-title" });
+				card.createEl("div", {
+					text: item.name,
+					cls: "plane-hub__card-title",
+				});
 				const meta = card.createDiv({ cls: "plane-hub__card-meta" });
-				if (item.identifier) meta.createSpan({ text: item.identifier, cls: "plane-hub__pill" });
+				if (item.identifier)
+					meta.createSpan({
+						text: item.identifier,
+						cls: "plane-hub__pill",
+					});
 				if (item.priority) meta.createSpan({ text: item.priority });
 				const modId = item.module ?? item.module_id ?? null;
 				if (modId) meta.createSpan({ text: this.moduleName(modId) });
 
 				const actions = card.createDiv({ cls: "plane-hub__row" });
-				new ButtonComponent(actions).setButtonText("Edit").onClick(() => this.plugin.openHub());
+				new ButtonComponent(actions)
+					.setButtonText("Edit")
+					.onClick(() => this.plugin.openHub());
 				new ButtonComponent(actions)
 					.setButtonText("Note")
 					.onClick(async () => {
-						const file = await this.plugin.ensureNoteForWorkItem(item);
+						const file =
+							await this.plugin.ensureNoteForWorkItem(item);
 						const leaf = this.app.workspace.getLeaf(true);
 						await leaf.openFile(file);
 					});
@@ -146,13 +188,21 @@ export class PlaneBoardView extends ItemView {
 	private buildColumns(items: PlaneWorkItem[], states: PlaneState[]) {
 		const stateMap = new Map<string, PlaneState>();
 		for (const s of states) stateMap.set(s.id, s);
-		const grouped = new Map<string, { title: string; items: PlaneWorkItem[]; color?: string }>();
+		const grouped = new Map<
+			string,
+			{ title: string; items: PlaneWorkItem[]; color?: string }
+		>();
 
 		for (const item of items) {
 			const state = item.state_id ?? item.state ?? "unspecified";
 			const stateInfo = stateMap.get(state);
 			const title = stateInfo?.name ?? "Unspecified";
-			if (!grouped.has(state)) grouped.set(state, { title, items: [], color: stateInfo?.color });
+			if (!grouped.has(state))
+				grouped.set(state, {
+					title,
+					items: [],
+					color: stateInfo?.color,
+				});
 			grouped.get(state)!.items.push(item);
 		}
 
@@ -169,7 +219,9 @@ export class PlaneBoardView extends ItemView {
 	}
 
 	private moduleName(id: string): string {
-		const mod = this.plugin.getProjectDataOrEmpty().modules.find((m) => m.id === id);
+		const mod = this.plugin
+			.getProjectDataOrEmpty()
+			.modules.find((m) => m.id === id);
 		return mod?.name ?? id;
 	}
 
